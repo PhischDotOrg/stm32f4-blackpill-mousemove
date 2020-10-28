@@ -27,10 +27,41 @@
 #include <uart/UartDevice.hpp>
 
 #include <tasks/Heartbeat.hpp>
-#include <stm32/Spi.hpp>
-#include <spi/SpiAccess.hpp>
-#include <spi/SpiDevice.hpp>
-#include <devices/Ws2812bStrip.hpp>
+
+#include <usb/UsbCoreViaSTM32F4.hpp>
+#include <usb/UsbDeviceViaSTM32F4.hpp>
+#include <usb/InEndpointViaSTM32F4.hpp>
+#include <usb/OutEndpointViaSTM32F4.hpp>
+
+#include <usb/UsbTypes.hpp>
+
+#include <usb/UsbDevice.hpp>
+#include <usb/UsbInEndpoint.hpp>
+#include <usb/UsbOutEndpoint.hpp>
+#include <usb/UsbControlPipe.hpp>
+#include <usb/UsbConfiguration.hpp>
+#include <usb/UsbInterface.hpp>
+
+#include <usb/UsbApplication.hpp>
+#include <tasks/UsbMouse.hpp>
+/*******************************************************************************
+ *
+ ******************************************************************************/
+#if defined(__cplusplus)
+extern "C" {
+#endif /* defined(__cplusplus) */
+
+/*******************************************************************************
+ * USB Descriptors (defined in UsbDescriptors.cpp)
+ ******************************************************************************/
+extern const ::usb::UsbDeviceDescriptor_t usbDeviceDescriptor;
+extern const ::usb::UsbStringDescriptors_t usbStringDescriptors;
+extern const ::usb::UsbConfigurationDescriptor_t usbConfigurationDescriptor;
+extern const uint8_t hidMouseReportDescriptor[50];
+#if defined(__cplusplus)
+} /* extern "C" */
+#endif /* defined(__cplusplus) */
+
 
 /*******************************************************************************
  * System Devices
@@ -61,9 +92,6 @@ static stm32::Rcc                       rcc(RCC, pllCfg, flash, pwr);
 static stm32::Gpio::A                   gpio_A(rcc);
 static gpio::GpioEngine                 gpio_engine_A(&gpio_A);
 
-static stm32::Gpio::B                   gpio_B(rcc);
-static gpio::GpioEngine                 gpio_engine_B(&gpio_B);
-
 static stm32::Gpio::C                   gpio_C(rcc);
 static gpio::GpioEngine                 gpio_engine_C(&gpio_C);
 
@@ -85,77 +113,51 @@ static stm32::Uart::Usart6<gpio::AlternateFnPin>    uart_access(rcc, uart_rx, ua
 uart::UartDevice                        g_uart(&uart_access);
 
 /*******************************************************************************
- * WS2812b Strip
+ * USB Device
  ******************************************************************************/
-static gpio::AlternateFnPin spi_sclk(gpio_engine_A, 5);
-static gpio::AlternateFnPin spi_nsel(gpio_engine_A, 4);
-static gpio::AlternateFnPin spi_mosi(gpio_engine_B, 5);
-static gpio::AlternateFnPin spi_miso(gpio_engine_A, 6);
+static gpio::AlternateFnPin             usb_pin_dm(gpio_engine_A, 11);
+static gpio::AlternateFnPin             usb_pin_dp(gpio_engine_A, 12);
+static gpio::AlternateFnPin             usb_pin_vbus(gpio_engine_A, 9);
+static gpio::AlternateFnPin             usb_pin_id(gpio_engine_A, 10);
 
-#if defined(SPI_VIA_DMA)
-static stm32::Spi::DmaSpi1<
-    gpio::AlternateFnPin,
-    decltype(ws2812b_spiTxDmaChannel),
-    decltype(ws2812b_spiRxDmaChannel)
->
-#else
-static stm32::Spi::Spi1<
-    gpio::AlternateFnPin
->
-#endif
-ws2812b_spibus( /* p_rcc = */ rcc,
-            #if defined(SPI_VIA_DMA)
-                /* p_txDmaChannel = */ ws2812b_spiTxDmaChannel,
-                /* p_rxDmaChannel = */ ws2812b_spiRxDmaChannel,
-            #endif
-                /* p_sclk = */ spi_sclk,
-                /* p_nsel = */ spi_nsel,
-                /* p_mosi = */ spi_mosi,
-                /* p_miso = */ spi_miso,
-                /* p_prescaler = */ decltype(ws2812b_spibus)::BaudRatePrescaler_e::e_SpiPrescaler32
-);
+/*******************************************************************************
+ * USB Stack
+ ******************************************************************************/
+static stm32::usb::UsbFullSpeedCoreT<
+  decltype(nvic),
+  decltype(rcc),
+  decltype(usb_pin_dm)
+>                                               usbCore(nvic, rcc, usb_pin_dm, usb_pin_dp, usb_pin_vbus, usb_pin_id, /* p_rxFifoSzInWords = */ 256);
+static stm32::usb::UsbDeviceViaSTM32F4          usbHwDevice(usbCore);
+static stm32::usb::CtrlInEndpointViaSTM32F4     defaultHwCtrlInEndpoint(usbHwDevice, /* p_fifoSzInWords = */ 0x20);
 
-static spi::DeviceT ws2812b_spidev(&ws2812b_spibus);
-static devices::Ws2812bStripT<
-    17,
-    decltype(ws2812b_spidev),
-    devices::Ws2812bDataInverted
->                                                           ws2812bStrip(ws2812b_spidev);
+static stm32::usb::IrqInEndpointViaSTM32F4      irqInHwEndp(usbHwDevice, /* p_fifoSzInWords = */ 128, 1);
+static usb::UsbIrqInEndpointT<decltype(irqInHwEndp)>    irqInEndpoint(irqInHwEndp);
+
+static usb::UsbHidInterface                     usbInterface(irqInEndpoint, hidMouseReportDescriptor, sizeof(hidMouseReportDescriptor));
+
+static usb::UsbConfiguration                    usbConfiguration(usbInterface, usbConfigurationDescriptor);
+
+static usb::UsbDevice                           genericUsbDevice(usbHwDevice, usbDeviceDescriptor, usbStringDescriptors, { &usbConfiguration });
+
+static usb::UsbCtrlInEndpointT                                              ctrlInEndp(defaultHwCtrlInEndpoint);
+static usb::UsbControlPipe                                                  defaultCtrlPipe(genericUsbDevice, ctrlInEndp);
+
+static usb::UsbCtrlOutEndpointT<stm32::usb::CtrlOutEndpointViaSTM32F4>      ctrlOutEndp(defaultCtrlPipe);
+static stm32::usb::CtrlOutEndpointViaSTM32F4                                defaultCtrlOutEndpoint(usbHwDevice, ctrlOutEndp);
+
+static usb::UsbMouseApplication                 usbMouseApplication(irqInEndpoint);
 
 /*******************************************************************************
  * Tasks
  ******************************************************************************/
 static tasks::HeartbeatT<decltype(g_led_green)> heartbeat_gn("hrtbt_g", g_led_green, 3, 500);
+static tasks::UsbMouseMover                                             usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100, g_led_green);
 
-#if 1
-/* FIXME Only for testing the WS2812B Driver via SPI and DMA. */
-static bool led_status = false;
-
-int
-toggleLed(void *p_data) {
-    assert(p_data != nullptr);
-
-    bool *status = static_cast<bool *>(p_data);
-
-    Pixel::RGB color;
-    if (*status) {
-        color = Pixel::RGB(0x40'00'00);
-    } else {
-        color = Pixel::RGB(0x00'40'00);
-    }
-
-    for (unsigned idx = 0; idx < ws2812bStrip.SIZE; idx++) {
-        ws2812bStrip.setPixel(idx, color);
-    }
-    ws2812bStrip.show();
-
-    *status = !(*status);
-
-    return (0);
-}
-
-static tasks::PeriodicCallback  task_500ms("t_500ms", 2, 500, &toggleLed, &led_status);
-#endif
+/*******************************************************************************
+ * Queues for Task Communication
+ ******************************************************************************/
+static SemaphoreHandle_t    usbMutex;
 
 /*******************************************************************************
  *
@@ -175,7 +177,12 @@ static_assert(pllCfg.getApb2SpeedInHz()     ==  84 * 1000 * 1000,   "Expected AP
 extern "C" {
 #endif /* defined(__cplusplus) */
 
+#if defined(HOSTBUILD)
 int
+#else
+[[noreturn]]
+void
+#endif
 main(void) {
     rcc.setMCO(g_mco1, decltype(rcc)::MCO1Output_e::e_PLL, decltype(rcc)::MCOPrescaler_t::e_MCOPre_5);
 
@@ -188,21 +195,57 @@ main(void) {
 
     PrintStartupMessage(sysclk, ahb, apb1, apb2);
 
-    if (SysTick_Config(SystemCoreClock / 1000)) {
+    /* Inform FreeRTOS about clock speed */
+    if (SysTick_Config(SystemCoreClock / configTICK_RATE_HZ)) {
         PHISCH_LOG("FATAL: Capture Error!\r\n");
         goto bad;
     }
 
+    usbHwDevice.start();
+
+    usbMutex = xSemaphoreCreateMutex();
+    if (usbMutex == nullptr) {
+        PHISCH_LOG("Failed to create USB Mutex!\r\n");
+        goto bad;
+    }
+    usb_move.setUsbMutex(usbMutex);
     PHISCH_LOG("Starting FreeRTOS Scheduler...\r\n");
     vTaskStartScheduler();
 
+    usbHwDevice.stop();
+
 bad:
+
+    if (usbMutex != nullptr) {
+        vSemaphoreDelete(usbMutex);
+    }
+
     PHISCH_LOG("FATAL ERROR!\r\n");
     while (1) ;
 
+#if defined(HOSTBUILD)
     return (0);
+#endif
 }
 
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */
+
+/*******************************************************************************
+ *
+ ******************************************************************************/
+#if defined(__cplusplus)
+extern "C" {
+#endif /* defined (__cplusplus) */
+
+void
+OTG_FS_IRQHandler(void) {
+    usbCore.handleIrq();
+}
+
+
+#if defined(__cplusplus)
+} /* extern "C" */
+#endif /* defined (__cplusplus) */
+

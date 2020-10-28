@@ -17,7 +17,7 @@ pipeline {
                     ],
                     browser: [
                         $class: 'GithubWeb',
-                        repoUrl: 'https://github.com/PhischDotOrg/stm32f4-minimal'
+                        repoUrl: 'https://github.com/PhischDotOrg/stm32f4-blackpill-mousemove'
                     ],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [
@@ -38,7 +38,7 @@ pipeline {
                     userRemoteConfigs: [
                         [
                             credentialsId: 'a88f9971-dae1-4a4d-9a8f-c7af88cad71b',
-                            url: 'git@github.com:PhischDotOrg/stm32f4-minimal.git'
+                            url: 'git@github.com:PhischDotOrg/stm32f4-blackpill-mousemove.git'
                         ]
                     ]
                 ])

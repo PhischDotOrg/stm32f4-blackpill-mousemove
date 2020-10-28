@@ -27,6 +27,7 @@ include(common/Coverage.cmake)
 set(TARGET_NAME     firmware)
 set(TARGET_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/UsbDescriptors.cpp
 )
 
 set(STM32_BOARD   STM32F4_Discovery    CACHE STRING "STM32 Board Type")
