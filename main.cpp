@@ -102,14 +102,14 @@ static gpio::GpioEngine                 gpio_engine_D(&gpio_D);
  * LEDs
  ******************************************************************************/
 static gpio::AlternateFnPin             g_mco1(gpio_engine_A, 8);
-static gpio::DigitalOutPin              g_led_green(gpio_engine_D, 12);
+static gpio::DigitalOutPin              g_led(gpio_engine_C, 13);
 
 /*******************************************************************************
  * UART
  ******************************************************************************/
-static gpio::AlternateFnPin             uart_tx(gpio_engine_C, 6);
-static gpio::AlternateFnPin             uart_rx(gpio_engine_C, 7);
-static stm32::Uart::Usart6<gpio::AlternateFnPin>    uart_access(rcc, uart_rx, uart_tx);
+static gpio::AlternateFnPin             uart_tx(gpio_engine_A, 3);
+static gpio::AlternateFnPin             uart_rx(gpio_engine_A, 2);
+static stm32::Uart::Usart2<gpio::AlternateFnPin>    uart_access(rcc, uart_rx, uart_tx);
 uart::UartDevice                        g_uart(&uart_access);
 
 /*******************************************************************************
@@ -151,8 +151,7 @@ static usb::UsbMouseApplication                 usbMouseApplication(irqInEndpoin
 /*******************************************************************************
  * Tasks
  ******************************************************************************/
-static tasks::HeartbeatT<decltype(g_led_green)> heartbeat_gn("hrtbt_g", g_led_green, 3, 500);
-static tasks::UsbMouseMover                                             usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100, g_led_green);
+static tasks::UsbMouseMover usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100, g_led);
 
 /*******************************************************************************
  * Queues for Task Communication
