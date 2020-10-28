@@ -30,7 +30,7 @@ set(TARGET_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/UsbDescriptors.cpp
 )
 
-set(STM32_BOARD   STM32F4_Discovery    CACHE STRING "STM32 Board Type")
+set(STM32_BOARD   STM32F4_BlackPill     CACHE STRING "STM32 Board Type")
 
 ###############################################################################
 # Include a common CMake File that contains the stuff which would normally go
