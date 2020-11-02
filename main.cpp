@@ -159,7 +159,7 @@ static stm32::usb::UsbDeviceViaSTM32F4          usbHwDevice(usbCore);
 static stm32::usb::CtrlInEndpointViaSTM32F4     defaultHwCtrlInEndpoint(usbHwDevice, /* p_fifoSzInWords = */ 0x20);
 
 static stm32::usb::IrqInEndpointViaSTM32F4      irqInHwEndp(usbHwDevice, /* p_fifoSzInWords = */ 128, 1);
-static usb::UsbIrqInEndpointT<decltype(irqInHwEndp)>    irqInEndpoint(irqInHwEndp);
+static usb::UsbIrqInEndpointT                   irqInEndpoint(irqInHwEndp);
 
 static usb::UsbHidInterface                     usbInterface(irqInEndpoint, hidMouseReportDescriptor, sizeof(hidMouseReportDescriptor));
 
@@ -202,9 +202,6 @@ main(void) {
     rcc.setMCO(g_mco1, decltype(rcc)::MCO1Output_e::e_PLL, decltype(rcc)::MCOPrescaler_t::e_MCOPre_5);
 
     uart_access.setBaudRate(decltype(uart_access)::BaudRate_e::e_230400);
-
-    /* FIXME This should go in the Object Tree somewhere */
-    DBGMCU->CR = /* DBGMCU_CR_DBG_SLEEP_Msk | DBGMCU_CR_DBG_STOP_Msk | DBGMCU_CR_DBG_STANDBY_Msk | */ DBGMCU_CR_TRACE_IOEN_Msk;
 
     const unsigned sysclk = pllCfg.getSysclkSpeedInHz() / 1000;
     const unsigned ahb    = pllCfg.getAhbSpeedInHz() / 1000;
