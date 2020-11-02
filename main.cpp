@@ -28,6 +28,10 @@
 
 #include <tasks/Heartbeat.hpp>
 
+#include <stm32/Itm.hpp>
+#include <stm32/Tpi.hpp>
+#include <stm32/CoreDbg.hpp>
+
 #include <usb/UsbCoreViaSTM32F4.hpp>
 #include <usb/UsbDeviceViaSTM32F4.hpp>
 #include <usb/InEndpointViaSTM32F4.hpp>
@@ -64,7 +68,7 @@ extern const uint8_t hidMouseReportDescriptor[50];
 
 
 /*******************************************************************************
- * System Devices
+ * PLL Configuration
  ******************************************************************************/
 static const constexpr stm32::PllCfg pllCfg = {
     .m_pllSource        = stm32::PllCfg::PllSource_t::e_PllSourceHSE,
@@ -79,6 +83,17 @@ static const constexpr stm32::PllCfg pllCfg = {
     .m_apb2Prescaler    = stm32::PllCfg::APBPrescaler_t::e_APBPrescaler_None
 };
 
+const uint32_t SystemCoreClock = pllCfg.getSysclkSpeedInHz();
+
+static_assert(pllCfg.isValid() == true,                            "PLL Configuration is not valid!");
+static_assert(SystemCoreClock               == 84 * 1000 * 1000,   "Expected System Clock to be at 84 MHz!");
+static_assert(pllCfg.getAhbSpeedInHz()      == 84 * 1000 * 1000,   "Expected AHB to be running at 84 MHz!");
+static_assert(pllCfg.getApb1SpeedInHz()     == 42 * 1000 * 1000,   "Expected APB1 to be running at 42 MHz!");
+static_assert(pllCfg.getApb2SpeedInHz()     == 84 * 1000 * 1000,   "Expected APB2 to be running at 84 MHz!");
+
+/*******************************************************************************
+ * System Devices
+ ******************************************************************************/
 static stm32::Scb                       scb(SCB);
 static stm32::Nvic                      nvic(NVIC, scb);
 
@@ -92,6 +107,9 @@ static stm32::Rcc                       rcc(RCC, pllCfg, flash, pwr);
 static stm32::Gpio::A                   gpio_A(rcc);
 static gpio::GpioEngine                 gpio_engine_A(&gpio_A);
 
+static stm32::Gpio::B                   gpio_B(rcc);
+static gpio::GpioEngine                 gpio_engine_B(&gpio_B);
+
 static stm32::Gpio::C                   gpio_C(rcc);
 static gpio::GpioEngine                 gpio_engine_C(&gpio_C);
 
@@ -103,6 +121,15 @@ static gpio::GpioEngine                 gpio_engine_D(&gpio_D);
  ******************************************************************************/
 static gpio::AlternateFnPin             g_mco1(gpio_engine_A, 8);
 static gpio::DigitalOutPin              g_led(gpio_engine_C, 13);
+
+/*******************************************************************************
+ * SWO Trace via the Cortex M4 Debug Infrastructure 
+ ******************************************************************************/
+static gpio::AlternateFnPin swo(gpio_engine_B, 3);
+
+static stm32::CoreDbgT<CoreDebug_BASE>                          coreDbg;
+static stm32::TpiT<TPI_BASE, decltype(coreDbg), decltype(swo)>  tpi(coreDbg, swo);
+static stm32::ItmT<ITM_BASE, decltype(tpi)>                     itm(tpi, stm32::Itm::getDivisor(SystemCoreClock /*, 2'250'000 */));
 
 /*******************************************************************************
  * UART
@@ -151,30 +178,19 @@ static usb::UsbMouseApplication                 usbMouseApplication(irqInEndpoin
 /*******************************************************************************
  * Tasks
  ******************************************************************************/
-static tasks::UsbMouseMover usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100, g_led);
+static tasks::HeartbeatT heartbeat_gn("hrtbt_g", g_led, 3, 500);
+static tasks::UsbMouseMover usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100);
 
 /*******************************************************************************
  * Queues for Task Communication
  ******************************************************************************/
 static SemaphoreHandle_t    usbMutex;
 
-/*******************************************************************************
- *
- ******************************************************************************/
-const uint32_t SystemCoreClock = pllCfg.getSysclkSpeedInHz();
-
-static_assert(pllCfg.isValid() == true,                            "PLL Configuration is not valid!");
-static_assert(SystemCoreClock               == 84 * 1000 * 1000,   "Expected System Clock to be at 84 MHz!");
-static_assert(pllCfg.getAhbSpeedInHz()      == 84 * 1000 * 1000,   "Expected AHB to be running at 84 MHz!");
-static_assert(pllCfg.getApb1SpeedInHz()     == 42 * 1000 * 1000,   "Expected APB1 to be running at 42 MHz!");
-static_assert(pllCfg.getApb2SpeedInHz()     == 84 * 1000 * 1000,   "Expected APB2 to be running at 84 MHz!");
-
-/*******************************************************************************
- *
- ******************************************************************************/
+/******************************************************************************/
 #if defined(__cplusplus)
 extern "C" {
 #endif /* defined(__cplusplus) */
+/******************************************************************************/
 
 #if defined(HOSTBUILD)
 int
@@ -186,6 +202,9 @@ main(void) {
     rcc.setMCO(g_mco1, decltype(rcc)::MCO1Output_e::e_PLL, decltype(rcc)::MCOPrescaler_t::e_MCOPre_5);
 
     uart_access.setBaudRate(decltype(uart_access)::BaudRate_e::e_230400);
+
+    /* FIXME This should go in the Object Tree somewhere */
+    DBGMCU->CR = /* DBGMCU_CR_DBG_SLEEP_Msk | DBGMCU_CR_DBG_STOP_Msk | DBGMCU_CR_DBG_STANDBY_Msk | */ DBGMCU_CR_TRACE_IOEN_Msk;
 
     const unsigned sysclk = pllCfg.getSysclkSpeedInHz() / 1000;
     const unsigned ahb    = pllCfg.getAhbSpeedInHz() / 1000;
@@ -227,24 +246,24 @@ bad:
 #endif
 }
 
-#if defined(__cplusplus)
-} /* extern "C" */
-#endif /* defined(__cplusplus) */
+void
+debug_printf(const char * const p_fmt, ...) {
+    va_list va;
+    va_start(va, p_fmt);
 
-/*******************************************************************************
- *
- ******************************************************************************/
-#if defined(__cplusplus)
-extern "C" {
-#endif /* defined (__cplusplus) */
+    ::tfp_format(&itm, decltype(itm)::putf, p_fmt, va);
+
+    va_end(va);
+}
 
 void
 OTG_FS_IRQHandler(void) {
     usbCore.handleIrq();
 }
 
-
+/******************************************************************************/
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined (__cplusplus) */
+/******************************************************************************/
 
