@@ -2,7 +2,7 @@
 # $Copyright$
 #
 cmake_minimum_required(VERSION 3.12)
-project(stm32f4-minimal)
+project(stm32f4-blackpill-mousemove)
 
 ###############################################################################
 # Enable C++17 Support according to:
