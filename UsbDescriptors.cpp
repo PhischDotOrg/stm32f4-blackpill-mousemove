@@ -41,8 +41,8 @@ extern const ::usb::UsbStringDescriptors_t usbStringDescriptors FIXED_DATA = {
         .m_stringDescriptorTable = {
                 .m_languageIds      = ::usb::UsbLangIdStringDescriptor_t(usbSupportedLanguageIds),
                 .m_manufacturer     = ::usb::UsbStringDescriptor("PhiSch.org"),
-                .m_product          = ::usb::UsbStringDescriptor("PhiSch.org USB HID Demo (on Nucleo-64)"),
-                .m_serialNumber     = ::usb::UsbStringDescriptor("CB9830D2-1F07-4B94-89CF-B6C4CB24B9A1"),
+                .m_product          = ::usb::UsbStringDescriptor("PhiSch.org USB HID Demo (on STM32F4 BlackPill)"),
+                .m_serialNumber     = ::usb::UsbStringDescriptor("D2209DFF-B80D-4E44-A8E5-466ADCCE7E30"),
                 .m_configuration    = ::usb::UsbStringDescriptor("PhiSch.org USB Human Interface Device (HID) Configuration"),
                 .m_interface        = ::usb::UsbStringDescriptor("PhiSch.org USB Human Interface Device (HID) Interface")
         }
