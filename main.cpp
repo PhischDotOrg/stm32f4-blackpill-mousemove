@@ -183,9 +183,9 @@ static usb::UsbMouseApplicationT                 usbMouseApplication(usbInterfac
 static tasks::HeartbeatT heartbeat_gn("hrtbt_g", g_led, 3, 500);
 static tasks::UsbMouseMoverT<
     decltype(usbMouseApplication),
-    tasks::UsbMouseMover::BackAndForthT<100>
+    tasks::UsbMouseMover::CircleT< /* nRadius = */ 50, /* nSpeed = */ 4>
 >
-usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication);
+usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 20, usbMouseApplication);
 
 /*******************************************************************************
  * Queues for Task Communication
@@ -236,7 +236,6 @@ main(void) {
     usbHwDevice.stop();
 
 bad:
-
     if (usbMutex != nullptr) {
         vSemaphoreDelete(usbMutex);
     }
