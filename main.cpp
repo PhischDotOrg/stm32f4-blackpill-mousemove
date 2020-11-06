@@ -31,6 +31,7 @@
 #include <stm32/Itm.hpp>
 #include <stm32/Tpi.hpp>
 #include <stm32/CoreDbg.hpp>
+#include <stm32/DbgMcu.hpp>
 
 #include <usb/UsbCoreViaSTM32F4.hpp>
 #include <usb/UsbDeviceViaSTM32F4.hpp>
@@ -123,13 +124,14 @@ static gpio::AlternateFnPin             g_mco1(gpio_engine_A, 8);
 static gpio::DigitalOutPin              g_led(gpio_engine_C, 13);
 
 /*******************************************************************************
- * SWO Trace via the Cortex M4 Debug Infrastructure 
+ * SWO Trace via the Cortex M4 Debug Infrastructure
  ******************************************************************************/
 static gpio::AlternateFnPin swo(gpio_engine_B, 3);
 
-static stm32::CoreDbgT<CoreDebug_BASE>                          coreDbg;
-static stm32::TpiT<TPI_BASE, decltype(coreDbg), decltype(swo)>  tpi(coreDbg, swo);
-static stm32::ItmT<ITM_BASE, decltype(tpi)>                     itm(tpi, stm32::Itm::getDivisor(SystemCoreClock /*, 2'250'000 */));
+static stm32::DbgMcuT<DBGMCU_BASE, decltype(swo)>                   dbgMcu(swo);
+static stm32::CoreDbgT<CoreDebug_BASE>                              coreDbg;
+static stm32::TpiT<TPI_BASE, decltype(coreDbg), decltype(dbgMcu)>   tpi(coreDbg, dbgMcu);
+static stm32::ItmT<ITM_BASE, decltype(tpi)>                         itm(tpi, stm32::Itm::getDivisor(SystemCoreClock /*, 2'250'000 */));
 
 /*******************************************************************************
  * UART
