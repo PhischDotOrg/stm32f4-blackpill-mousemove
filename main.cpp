@@ -175,13 +175,17 @@ static usb::UsbControlPipe                                                  defa
 static usb::UsbCtrlOutEndpointT<stm32::usb::CtrlOutEndpointViaSTM32F4>      ctrlOutEndp(defaultCtrlPipe);
 static stm32::usb::CtrlOutEndpointViaSTM32F4                                defaultCtrlOutEndpoint(usbHwDevice, ctrlOutEndp);
 
-static usb::UsbMouseApplication                 usbMouseApplication(irqInEndpoint);
+static usb::UsbMouseApplicationT                 usbMouseApplication(usbInterface);
 
 /*******************************************************************************
  * Tasks
  ******************************************************************************/
 static tasks::HeartbeatT heartbeat_gn("hrtbt_g", g_led, 3, 500);
-static tasks::UsbMouseMover usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication, 100, 100);
+static tasks::UsbMouseMoverT<
+    decltype(usbMouseApplication),
+    tasks::UsbMouseMover::BackAndForthT<100>
+>
+usb_move("usb_move", /* p_priority */ 4, /* p_periodMs */ 2 * 1000, usbMouseApplication);
 
 /*******************************************************************************
  * Queues for Task Communication
