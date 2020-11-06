@@ -5,7 +5,7 @@
 #include <phisch/log.h>
 
 /* for vTaskStartScheduler */
-#include <FreeRTOS.h> 
+#include <FreeRTOS.h>
 #include <FreeRTOS/include/task.h>
 
 #include <stm32/Cpu.hpp>
@@ -102,7 +102,7 @@ static stm32::Flash                     flash(FLASH);
 static stm32::Rcc                       rcc(RCC, pllCfg, flash, pwr);
 
 /*******************************************************************************
- * GPIO Engine Handlers 
+ * GPIO Engine Handlers
  ******************************************************************************/
 static stm32::Gpio::A                   gpio_A(rcc);
 static gpio::GpioEngine                 gpio_engine_A(&gpio_A);
