@@ -7,6 +7,7 @@
 /* for vTaskStartScheduler */
 #include <FreeRTOS.h>
 #include <FreeRTOS/include/task.h>
+#include <FreeRTOS/include/semphr.h>
 
 #include <stm32/Cpu.hpp>
 
