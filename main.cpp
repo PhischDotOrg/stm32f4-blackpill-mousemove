@@ -158,7 +158,7 @@ static stm32::usb::UsbFullSpeedCoreT<
 static stm32::usb::UsbDeviceViaSTM32F4          usbHwDevice(usbCore);
 static stm32::usb::CtrlInEndpointViaSTM32F4     defaultHwCtrlInEndpoint(usbHwDevice, /* p_fifoSzInWords = */ 0x20);
 
-static stm32::usb::IrqInEndpointViaSTM32F4      irqInHwEndp(usbHwDevice, /* p_fifoSzInWords = */ 128, 1);
+static stm32::usb::IrqInEndpointViaSTM32F4      irqInHwEndp(usbHwDevice, /* p_fifoSzInWords = */ 1, 1);
 static usb::UsbIrqInEndpointT                   irqInEndpoint(irqInHwEndp);
 
 static usb::UsbHidInterface                     usbInterface(irqInEndpoint, hidMouseReportDescriptor, sizeof(hidMouseReportDescriptor));
