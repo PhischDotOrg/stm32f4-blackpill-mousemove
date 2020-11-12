@@ -114,9 +114,6 @@ static gpio::GpioEngine                 gpio_engine_B(&gpio_B);
 static stm32::Gpio::C                   gpio_C(rcc);
 static gpio::GpioEngine                 gpio_engine_C(&gpio_C);
 
-static stm32::Gpio::D                   gpio_D(rcc);
-static gpio::GpioEngine                 gpio_engine_D(&gpio_D);
-
 /*******************************************************************************
  * LEDs
  ******************************************************************************/
