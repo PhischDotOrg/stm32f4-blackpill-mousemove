@@ -32,9 +32,6 @@ set(TARGET_SRC
 
 set(STM32_BOARD   STM32F4_BlackPill     CACHE STRING "STM32 Board Type")
 
-# FIXME Adding this breaks the Hostbuild / Test Cases for USB
-# This is b/c the USB_PRINTF resolves to g_uart.printf() and the
-# g_uart Symbol is not defined.
 add_definitions("-DUSB_DEBUG")
 
 ###############################################################################
