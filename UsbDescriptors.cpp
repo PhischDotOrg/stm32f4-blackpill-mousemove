@@ -35,27 +35,23 @@ extern const ::usb::UsbDeviceDescriptor_t usbDeviceDescriptor FIXED_DATA = {
 /*******************************************************************************
  * USB Device String Descriptors
  ******************************************************************************/
-static const ::usb::UsbLangId_t usbSupportedLanguageIds[] = { 0x0409, 0x0000 };
+static constexpr ::usb::UsbLangId_t usbSupportedLanguageIds[] = { 0x0409, 0x0000 };
+static const auto usbLangIdStringDescriptor         FIXED_DATA  = ::usb::UsbLangIdStringDescriptor(usbSupportedLanguageIds);
+static const auto usbStringDescriptorManufacturer   FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org");
+static const auto usbStringDescriptorSerialNumber   FIXED_DATA  = ::usb::UsbStringDescriptor(u"D2209DFF-B80D-4E44-A8E5-466ADCCE7E30");
+static const auto usbStringDescriptorProduct        FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB Human Interface Device (HID) Demo");
+static const auto usbStringDescriptorConfiguration  FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB Human Interface Device (HID) Configuration");
+static const auto usbStringDescriptorInterface      FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB Human Interface Device (HID) Interface");
 
-extern const auto usbStringDescriptorManufacturer   FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org");
-extern const auto usbStringDescriptorSerialNumber   FIXED_DATA  = ::usb::UsbStringDescriptor(u"D2209DFF-B80D-4E44-A8E5-466ADCCE7E30");
-extern const auto usbStringDescriptorProduct        FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB HID Demo (on STM32F4 BlackPill)");
-extern const auto usbStringDescriptorConfiguration  FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB Human Interface Device (HID) Configuration");
-extern const auto usbStringDescriptorInterface      FIXED_DATA  = ::usb::UsbStringDescriptor(u"PhiSch.org USB Human Interface Device (HID) Interface");
-
-extern const ::usb::UsbStringDescriptorTable_t usbStringDescriptors FIXED_DATA = {
-        .m_languageIds      = ::usb::UsbLangIdStringDescriptor_t(usbSupportedLanguageIds),
-        .m_padding          = {},
-        .m_stringDescriptors = {
-            .m_descriptors = {
-                .m_languageIds      = (const usb::UsbLangIdStringDescriptor_t *) 0xdeadc0de,
-                .m_manufacturer     = usbStringDescriptorManufacturer.data(),
-                .m_product          = reinterpret_cast<const uint8_t *>(&usbStringDescriptorProduct),
-                .m_serialNumber     = usbStringDescriptorSerialNumber.data(),
-                .m_configuration    = usbStringDescriptorConfiguration.data(),
-                .m_interface        = usbStringDescriptorInterface.data()
-            }
-        }
+extern const ::usb::UsbStringDescriptors_t usbStringDescriptors FIXED_DATA = {
+    .m_strings = {
+        .m_languageIds      = usbLangIdStringDescriptor.data(),
+        .m_manufacturer     = usbStringDescriptorManufacturer.data(),
+        .m_product          = usbStringDescriptorProduct.data(),
+        .m_serialNumber     = usbStringDescriptorSerialNumber.data(),
+        .m_configuration    = usbStringDescriptorConfiguration.data(),
+        .m_interface        = usbStringDescriptorInterface.data()
+    }
 };
 
 /*
