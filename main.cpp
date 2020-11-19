@@ -129,7 +129,8 @@ static gpio::AlternateFnPin swo(gpio_engine_B, 3);
 static stm32::DbgMcuT<DBGMCU_BASE, decltype(swo)>                   dbgMcu(swo);
 static stm32::CoreDbgT<CoreDebug_BASE>                              coreDbg;
 static stm32::TpiT<TPI_BASE, decltype(coreDbg), decltype(dbgMcu)>   tpi(coreDbg, dbgMcu);
-static stm32::ItmT<ITM_BASE, decltype(tpi)>                         itm(tpi, stm32::Itm::getDivisor(SystemCoreClock /*, 2'250'000 */));
+static stm32::ItmT<ITM_BASE, decltype(tpi)>                         itm(tpi, stm32::Itm::getDivisor(SystemCoreClock, 4'000'000 /*, 2'250'000 */));
+static stm32::ItmPort                                               itmPrintf(itm, 8);
 
 /*******************************************************************************
  * UART
@@ -251,7 +252,7 @@ debug_printf(const char * const p_fmt, ...) {
     va_list va;
     va_start(va, p_fmt);
 
-    ::tfp_format(&itm, decltype(itm)::putf, p_fmt, va);
+    ::tfp_format(&itmPrintf, decltype(itmPrintf)::putf, p_fmt, va);
 
     va_end(va);
 }
