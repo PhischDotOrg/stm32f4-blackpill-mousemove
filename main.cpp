@@ -116,12 +116,13 @@ static stm32::usb::UsbFullSpeedCoreT<
   decltype(nvic),
   decltype(rcc),
   decltype(usb_pin_dm)
->                                               usbCore(nvic, rcc, usb_pin_dm, usb_pin_dp, usb_pin_vbus, usb_pin_id, /* p_rxFifoSzInWords = */ 256);
-static stm32::Usb::Device                       usbHwDevice(usbCore);
+>                                               usbHwCore(nvic, rcc, usb_pin_dm, usb_pin_dp, usb_pin_vbus, usb_pin_id, /* p_rxFifoSzInWords = */ 256);
+static stm32::Usb::Device                       usbHwDevice(usbHwCore);
 static stm32::Usb::CtrlInEndpoint               defaultHwCtrlInEndpoint(usbHwDevice, /* p_fifoSzInWords = */ 0x20);
+static ::usb::UsbCtrlInEndpoint                 defaultCtrlInEndpoint(defaultHwCtrlInEndpoint);
 
 static stm32::Usb::IrqInEndpoint                irqInHwEndp(usbHwDevice, /* p_fifoSzInWords = */ 1, 1);
-static usb::UsbIrqInEndpointT                   irqInEndpoint(irqInHwEndp);
+static usb::UsbIrqInEndpoint                    irqInEndpoint(irqInHwEndp);
 
 static usb::UsbHidInterface                     usbInterface(irqInEndpoint, ::usb::descriptors::hid::hidMouseReportDescriptor, sizeof(::usb::descriptors::hid::hidMouseReportDescriptor));
 
@@ -129,11 +130,10 @@ static usb::UsbConfiguration                    usbConfiguration(usbInterface, *
 
 static usb::UsbDevice                           genericUsbDevice(usbHwDevice, ::usb::descriptors::hid::usbDeviceDescriptor, ::usb::descriptors::hid::usbStringDescriptors, { &usbConfiguration });
 
-static usb::UsbCtrlInEndpointT                                              ctrlInEndp(defaultHwCtrlInEndpoint);
-static usb::UsbControlPipe                                                  defaultCtrlPipe(genericUsbDevice, ctrlInEndp);
+static usb::UsbControlPipe                      defaultCtrlPipe(genericUsbDevice, defaultCtrlInEndpoint);
 
-static usb::UsbCtrlOutEndpointT<stm32::Usb::CtrlOutEndpoint>                ctrlOutEndp(defaultCtrlPipe);
-static stm32::Usb::CtrlOutEndpoint                                          defaultCtrlOutEndpoint(usbHwDevice, ctrlOutEndp);
+static usb::UsbCtrlOutEndpoint                  defaultCtrlOutEndp(defaultCtrlPipe);
+static stm32::Usb::CtrlOutEndpoint              defaultHwCtrlOutEndp(usbHwDevice, defaultCtrlOutEndp);
 
 static usb::UsbMouseApplicationT                 usbMouseApplication(usbInterface);
 
@@ -250,7 +250,7 @@ OTG_FS_WKUP_IRQHandler(void) {
 
 void
 OTG_FS_IRQHandler(void) {
-    usbCore.handleIrq();
+    usbHwCore.handleIrq();
 }
 
 void
